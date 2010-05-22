@@ -49,6 +49,25 @@ hooks_add("puttile", "map_start_preserve", function (x,y,z,player,bidx,midx)
 	return false
 end)
 
+hooks_add("chat", "/first", function (idx,pid,msg)
+	if msg == "/first" then
+		local map = settings.maps.start
+		local midx = map.midx
+		local x = map.spawn.x
+		local y = map.spawn.y
+		local z = map.spawn.z
+		local yo = map.spawn.yo
+		local xo = map.spawn.xo
+		
+		minecraft.setmap(idx,settings.server_name,"Welcome home!",midx,x,y,z,xo,yo)
+		
+		return true
+	end
+	
+	return false
+end)
+
+
 do
 	local lx,ly,lz
 	local cx,cy,cz

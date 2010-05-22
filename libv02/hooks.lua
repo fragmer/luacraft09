@@ -6,7 +6,7 @@ hooks = {
 	disconnect = {obj = {}},
 	join = {obj = {}},
 	part = {obj = {}},
-	chatmsg = {obj = {}},
+	chat = {obj = {}},
 }
 
 function hooks_add(base, name, fn)
@@ -147,21 +147,44 @@ end)
 function hook_chat(idx,pid,msg)
 	local nick = minecraft.gp_nick(idx)
 	
-	print(nick..": "..msg)
-	minecraft.chatmsg_all(pid,nick..": "..msg)
+	for i=#(hooks.chat),1,-1 do
+		if hooks.chat.obj[hooks.chat[i]].fn(idx,pid,msg) then
+			return
+		end
+	end
+
+	if string.sub(msg,1,1) == "/" then
+		minecraft.chatmsg(idx,0xFF,"Invalid command.")
+	else
+		minecraft.chatmsg_all(pid,nick..": "..msg)
+	end
 end
 
 function hook_join(pid,nick,idx,midx)
 	players.obj[nick].midx = midx
+
+	for i=#(hooks.join),1,-1 do
+		hooks.join.obj[hooks.join[i]].fn(pid,nick,idx,midx)
+	end
+end
+
+hooks_add("join", "default", function (pid,nick,idx,midx)
 	local mapname = settings.map_lookup[midx] or "(?)"
 	minecraft.chatmsg_map(midx,0x7F,nick.." has joined "..mapname)
-end
+end)
 
 function hook_part(pid,nick,idx,midx)
 	players.obj[nick].midx = nil
+	
+	for i=#(hooks.part),1,-1 do
+		hooks.part.obj[hooks.part[i]].fn(pid,nick,idx,midx)
+	end
+end
+
+hooks_add("part", "default", function (pid,nick,idx,midx)
 	local mapname = settings.map_lookup[midx] or "(?)"
 	minecraft.chatmsg_map(midx,0x7F,nick.." has left "..mapname)
-end
+end)
 
 function hook_connect(pid,nick,idx)
 	local mapname = settings.map_default
@@ -204,8 +227,6 @@ end
 
 hooks_add("connect", "default", function (pid,nick,idx)
 	minecraft.chatmsg_all(0x7F,nick.." has connected")
-	
-	return false
 end)
 
 function hook_disconnect(pid,nick,idx)
@@ -218,8 +239,6 @@ end
 
 hooks_add("disconnect", "default", function (pid,nick,idx)
 	minecraft.chatmsg_all(0x7F,nick.." has disconnected")
-	
-	return false
 end)
 
 minecraft.sethook_puttile("hook_puttile")

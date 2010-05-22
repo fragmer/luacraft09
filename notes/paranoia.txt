@@ -1,0 +1,49 @@
+
+One-on-one with the Friend Computer via terminal:
+	You should see a "coloured" dot behind glass.
+	Terminal status:
+		DGrey: Interface inactive.
+		Cyan: Interface just activated.
+		Cyan blink: Interface waiting for access.
+		Yellow: Communicating.
+		Violet blink: Communications ended.
+		
+		In scanning:
+			Red: Could not communicate.
+			Green: Communications established.
+		
+		In comms:
+			Red: Request denied.
+			Green: Request granted.
+	
+	To handle these:
+		* SomeUser interfacing term 035
+		* T-035 is in room 23I (23,45,82)
+		* Room 23-I is: IR->R interview room
+		
+		either /ack SomeUser or /rej SomeUser
+	
+	There's also this:
+		* SomeUser at door: 33I -> 23I
+		* 22-I is: IR waiting room
+		* 23-I is: IR->R interview room
+		
+		either /ack SomeUser or /rej SomeUser
+
+Doors:
+	ROYGBIV: Opens for given clearance level.
+	Gold: Places request for opening when player at door.
+	Iron: Door disabled.
+
+	Door status (Top/Bottom):
+		G-lass
+		S-hrub
+		T-NT
+		
+		G/G: Door inactive.
+		G/S: Player sensed.
+		T/T: Player moved; door access dropped.
+		G/SG: Request being placed.
+		G/T: Access/request denied.
+		S/S: Access/request granted.
+		

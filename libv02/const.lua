@@ -1,0 +1,69 @@
+pdata = {}
+
+tile = {
+	AIR = 0,
+	ROCK = 1,
+	GRASS = 2,
+	DIRT = 3,
+	STONE = 4,
+	WOOD = 5,
+	SHRUB = 6,
+	BLACKROCK = 7,
+	WATER = 8,
+	WATERSTILL = 9,
+	LAVA = 10,
+	LAVASTILL = 11,
+	SAND = 12,
+	GRAVEL = 13,
+	GOLD = 14,
+	IRON = 15,
+	COAL = 16,
+	TRUNK = 17,
+	LEAF = 18,
+	SPONGE = 19,
+	GLASS = 20,
+	RED = 21,
+	ORANGE = 22,
+	YELLOW = 23,
+	LIGHTGREEN = 24,
+	GREEN = 25,
+	AQUAGREEN = 26,
+	CYAN = 27,
+	BLUE = 28,
+	PURPLE = 29,
+	INDIGO = 30,
+	VIOLET = 31,
+	MAGENTA = 32,
+	PINK = 33,
+	DARKGREY = 34,
+	LIGHTGREY = 35,
+	WHITE = 36,
+	YELLOWFLOWER = 37,
+	REDFLOWER = 38,
+	MUSHROOM = 39,
+	REDMUSHROOM = 40,
+	SOLIDGOLD = 41,
+	IRON = 42,
+	BLOCKF = 43,
+	BLOCKH = 44,
+	BRICK = 45,
+	TNT = 46,
+	BOOKCASE = 47,
+	MOSSY = 48,
+	VERYBLACK = 49
+}
+
+isclear = {}
+isclear[tile.AIR] = true
+isclear[tile.WATER] = true
+isclear[tile.WATERSTILL] = true
+isclear[tile.LEAF] = true
+isclear[tile.GLASS] = true
+isclear[tile.SHRUB] = true
+isclear[tile.YELLOWFLOWER] = true
+isclear[tile.REDFLOWER] = true
+isclear[tile.MUSHROOM] = true
+isclear[tile.REDMUSHROOM] = true
+
+print("const.lua initialised")
+

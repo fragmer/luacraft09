@@ -1,0 +1,300 @@
+LuaCraft C+Lua Server
+Mostly coded by GreaseMonkey
+
+Server core copyright (c) 2009, 2010, Team ASCII
+All rights reserved.
+See main.c for licence agreement. That's the whole server core.
+
+Attached lua scripts are public domain.
+Please don't be stink and try to claim them as your own.
+I'm letting you supply credit in your own way.
+
+ ------------------------------------------------------------------------------
+
+***********************************************************************
+*                                                                     *
+*  BIG FLIPPIN' NOTE IN BIG FLIPPIN' LETTERS WITH BIG FLIPPIN' STARS  *
+*                                                                     *
+***********************************************************************
+
+THIS IS *NOT* THE C++ LUACRAFT WHICH EVERYONE SEEMS TO KNOW ABOUT. THIS WAS
+MADE *BEFORE* MINERCPP, WHICH WAS THE PROJECT *BEFORE* THE C++ LUACRAFT. THIS
+PROJECT HAS BEEN CALLED LUACRAFT SINCE CONCEPTION AND I HAVE NO INTENTION TO
+CHANGE THAT. OTHER THAN NAME, PURPOSE, AND SCRIPTING LANGUAGE, THIS HAS NOTHING
+TO DO WITH THE C++ LUACRAFT.
+
+Just thought I'd make that clear.
+
+To distinguish, I refer to this as LuaCraft '09 and the other as LuaCraft++.
+
+ ------------------------------------------------------------------------------
+
+Well, it's about time I supplied a README. Not a readme.txt, as that's for
+Wind0ze users, and I quite frankly don't care. Apparently you can build this
+with Cygwin or something as asiekierka apparently got it to work on his Windows
+machine.
+
+There is absolutely no warranty with this, so if it gobbles up your pet cat
+somehow, don't go whining to us.
+
+- GreaseMonkey
+
+ ------------------------------------------------------------------------------
+
+PLEA:
+(section written by GreaseMonkey)
+Now, after some consideration, I have decided to put this in. PLEASE, if you're
+going to use this server, I have placed a few guidelines to keep Notch
+reasonably happy.
+
+ * If there's a paid-only feature, please don't implement it until it's free.
+ * If a feature that you're using becomes paid-only, please disable it for the
+   meantime, until it's free.
+ * For the previous two: If you're a premium-only server, go for your life.
+ * Do not penalise ANYONE for being a PAID user.
+
+Otherwise you'll basically be ripping off the guy who made Minecraft himself.
+
+Note that paid users aren't very detectable right now:
+  <gm|lap> Notch: is there an easy way to detect whether someone is a paid user
+           or not via some API?
+  <@Notch> gm|lap: Not yet. I will make it easier
+  <gm|lap> Notch: actually, i guess that doing a search for
+           "http://www.minecraft.net/skin/".urlencode($nick).".png" and
+           checking whether there's a 200 or a 404 return code could work
+  <@Notch> only if they uploaded a skin
+  <@Notch> about 80% have
+
+Oh wait, this just arrived:
+  <@Notch> Here you go: http://www.minecraft.net/haspaid.jsp?user=Notch
+
+Scrub that.
+
+ ------------------------------------------------------------------------------
+
+Wish list:
+  * Allow ghosts. -GM
+  * Implement HTTP queries. -GM
+
+ ------------------------------------------------------------------------------
+
+Idea for map file format:
+(section written by GreaseMonkey)
+
+To keep in step with Minecraft's formats, these will use big-endian numbers.
+
+First up, the header:
+  char magic[4];
+  // "MCTA" for v1 - MineCraft/Team-AScii
+  // "MC2A" for v2
+  uint32_t xlen;
+  uint32_t ylen;
+  uint32_t zlen;
+  uint32_t xspawn;
+  uint32_t yspawn;
+  uint32_t zspawn;
+
+Then, the data. Stop once you hit the end.
+  read byte
+  if byte == 0xFF:
+    read repcount
+    if top bit of repcount set:
+      repcount &= 0x7F
+      if version_2 and repcount & 0x40 is set:
+        repcount = ((repcount & 0x3F) << 8) | read a byte
+      copy from repcount along last y axis
+    else:
+      if version_2 and repcount & 0x40 is set:
+        repcount = ((repcount & 0x3F) << 8) | read a byte
+      copy from repcount along last z axis
+  elif top bit of byte set:
+    read repcount
+    if version_2 and repcount & 0x80 is set:
+      repcount = ((repcount & 0x7F) << 8) | read a byte
+    write (byte & 0x7F) repcount times
+  else:
+    write byte as-is
+
+Quite simple really... at least from a decompressor point of view.
+
+Note: You must NOT attempt to access rows which don't exist.
+As it stands, this will make them adminium blocks but you MUST NOT rely on
+this behaviour.
+
+If I make a converter for this format to the server_level.dat format, I'd be
+keen to release it.
+
+@Notch: If there's anything in this format which takes your fancy, feel free to
+take it for your next map format. -GM
+
+ ------------------------------------------------------------------------------
+
+Notes about the Lua-based map format handlers:
+
+They're slow.
+
+MCTA saving is VERY slow.
+
+While MCTA loading probably isn't as fast as server_level.dat loading, it's the
+recommended format as it doesn't, y'know, suck.
+
+ ------------------------------------------------------------------------------
+
+API:
+(section written by GreaseMonkey)
+
+Everything boots out of config.lua. All the Lua base libraries are available
+for you to use. Any minecraft-specific functions are available in the minecraft
+namespace.
+
+I may refer to a player ID. That is a one-byte value used in the protocol
+itself. Server chat messages should use either 0x7F (a WoM trick) or 0xFF. If
+you use a number >= 0x80, then the text will be precoloured yellow, and you
+won't be able to prefix a colour in properly.
+
+Oh yeah, colours start with & and then have a hex digit from 0 to f.
+
+Block locations are straight 16-bit integers.
+Player locations are 11:5-bit fixed-point integers.
+A player's "centre" is about 19 notches above the bottom of the player
+(19/32 blocks). However, the actual height of a player is somewhere between
+48 and 64 notches (1.5 -> 2 blocks).
+Player orientations are 8-bit integers. A full circle is 0x100, which is just
+larger than 8 bits.
+In coordinates, y is elevation. The larger y is, the higher you are.
+
+The minecraft client truncates spaces from chat messages at the start AS WELL
+AS at the end. You have been warned.
+
+ ------------------------------------------------------------------------------
+
+Player indices may change mid-connection. Player IDs may change
+cross-connection. It is highly recommended that you use the player name for
+anything player-specific.
+
+NOTE: You MUST use sethook_puttile. While it will currently work without, the
+      built-in code doesn't check anything.
+      
+      Yes, we scrapped all the fluid handlers and stuff. Those were cool, but
+      they are well past their best-before date, as Lua can also handle fluids
+      at a fairly high speed.
+      
+      We will NOT accept ANY mods that don't use sethook_puttile.
+
+bidx = minecraft.gettile(midx,x,y,z):
+    Gets the tile currently at x,y,z on map midx.
+
+minecraft.settile(midx,x,y,z,bidx):
+    NOTE: You most likely want settile_announce.
+          This is only useful for initialisation.
+
+    Sets the tile at x,y,z to bidx without announcing it.
+
+minecraft.settile_announce(midx,x,y,z,bidx):
+    Sets the tile at x,y,z to bidx and announce it to all on map midx.
+
+minecraft.faketile(x,y,z,bidx,idx):
+    Pretends to set the tile at x,y,z to bidx, for player idx.
+    
+    This can be useful for doors, teleports, and other interesting things.
+
+midx = minecraft.addmap(lx,ly,lz):
+    Makes a map and returns that map's index.
+
+minecraft.rmmap(midx):
+    Removes a map from memory. Make sure you move all players off this map
+    first, or they will be kicked.
+
+minecraft.sethook_puttile(fn_name): [ (x,y,z,player,bidx,midx) ]
+    The given function is called when a player attempts to place/remove a
+    block. Attempting to remove a block is classified as attempting to place
+    air at the location.
+    
+    NOTE: player refers to the player's name.
+
+minecraft.sethook_dotick(fn_name): [ () ]
+    The given function is called every 1/10 of a second.
+
+minecraft.sethook_chat(fn_name): [ (idx,pid,msg) ]
+    The given function is called when a player sends a chat message.
+
+minecraft.sethook_join(fn_name): [ (pid,nick,idx,midx) ]
+    The given function is called when a player joins a map.
+
+minecraft.sethook_part(fn_name): [ (pid,nick,idx,midx) ]
+    The given function is called when a player leaves a map.
+
+minecraft.sethook_connect(fn_name): [ allow = (pid,nick,idx) ]
+    The given function is called when a player connects. This is before the
+    join hook is called, and before any packets are sent. If you return true,
+    the player will be accepted, and if you return false, then they will not.
+    
+    This is usually a good time to call minecraft.setmap.
+
+minecraft.sethook_disconnect(fn_name): [ allow = (pid,nick,idx) ]
+    The given function is called when a player disconnects.
+
+minecraft.setmap(pidx,name,msg,midx,x,y,z,xo,yo)
+    Spawns a player on a map, removing them from any previous map.
+    Also gives the required loading message.
+    
+    NOTE: This triggers the part hook if the player was already on a map.
+
+minecraft.chatmsg(idx,pid,msg):
+    Sends a message to player idx.
+
+minecraft.chatmsg_all(pid,msg):
+    Sends a message to everyone.
+
+minecraft.chatmsg_map(midx,pid,msg):
+    Sends a message to everyone on map midx.
+
+nick = minecraft.gp_nick(idx):
+    Gets a player's real nickname.
+
+nick = minecraft.gp_fnick(idx):
+    Gets a player's fake nickname.
+
+minecraft.sp_nick(idx,nick):
+    NOTE: This function is immature. It needs to be refined. We're not going to
+          tell you not to use this, as we haven't declared it to suck yet. But
+          you have been warned.
+    
+    ADDENDUM: I'm not sure about why I wrote the above note. -GM
+    
+    Sets a player's fake nickname.
+
+pid = minecraft.gp_id(idx):
+    Gets a player's ID.
+
+midx = minecraft.gp_midx(idx):
+    Gets a player's map index.
+
+x,y,z,xo,yo = minecraft.gp_pos(idx):
+    Gets a player's position.
+
+minecraft.sp_pos(idx,x,y,z,xo,yo):
+    Sets a player's position. Useful for teleports.
+
+idx = minecraft.getidxbynick(nick):
+    Gets a player's idx by their real nickname, or -1 if it fails.
+
+idx = minecraft.getidxbyfnick(nick):
+    Gets a player's idx by their fake nickname, or -1 if it fails.
+
+idx = minecraft.getidxbyid(pid):
+    Gets a player's idx by their ID, or -1 if it fails.
+
+lx,ly,lz = minecraft.getmapdims(midx):
+    Gets a map's current dimensions.
+
+minecraft.kickplayer(idx, msg):
+    Sends the player a disconnect message.
+
+minecraft.partplayer(idx):
+    Removes the player from the server.
+    
+    NOTE: This triggers the part and disconnect hooks.
+
+ ------------------------------------------------------------------------------
+

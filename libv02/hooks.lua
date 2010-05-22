@@ -1,4 +1,46 @@
+hooks = {
+	puttile = {obj = {}},
+	dotick = {obj = {}},
+	connect = {obj = {}},
+	connect_premap = {obj = {}},
+	disconnect = {obj = {}},
+	join = {obj = {}},
+	part = {obj = {}},
+	chatmsg = {obj = {}},
+}
+
+function hooks_add(base, name, fn)
+	if hooks[base].obj[name] then
+		hooks[base].obj[name].fn = fn
+	else
+		hooks[base][#(hooks[base])+1] = name
+		hooks[base].obj[name] = {
+			li = #(hooks[base]),
+			fn = fn,
+		}
+	end
+end
+
+function hooks_rm(base, name)
+	if hooks[base].obj[name] then
+		local li = hooks[base].obj[name].li
+	
+		hooks[base].obj[hooks[base][#(hooks[base])]].li = li
+		hooks[base][li] = hooks[base][#(hooks[base])]
+		hooks[base].obj[name] = nil
+		hooks[base][#(hooks[base])] = nil
+	end
+end
+
 function hook_puttile(x,y,z,player,bidx,midx)
+	for i=#(hooks.puttile),1,-1 do
+		if hooks.puttile.obj[hooks.puttile[i]].fn(x,y,z,player,bidx,midx) then
+			break
+		end
+	end
+end
+
+hooks_add("puttile", "default", function (x,y,z,player,bidx,midx)
 	local passon = true
 	
 	local ta = minecraft.gettile(midx,x,y+1,z)
@@ -36,9 +78,17 @@ function hook_puttile(x,y,z,player,bidx,midx)
 	if passon then
 		minecraft.settile_announce(midx,x,y,z,bidx)
 	end
-end
+	
+	return true
+end)
 
 function hook_dotick()
+	for i=#(hooks.dotick),1,-1 do
+		hooks.dotick.obj[hooks.dotick[i]].fn()
+	end
+end
+
+hooks_add("dotick", "default_playertrace", function ()
 	for i,nick in ipairs(players) do
 		local p = players.obj[nick]
 		local idx = minecraft.getidxbynick(nick)
@@ -92,7 +142,7 @@ function hook_dotick()
 			end
 		end
 	end
-end
+end)
 
 function hook_chat(idx,pid,msg)
 	local nick = minecraft.gp_nick(idx)
@@ -115,6 +165,16 @@ end
 
 function hook_connect(pid,nick,idx)
 	local mapname = settings.map_default
+	
+	for i=#(hooks.connect_premap),1,-1 do
+		mapname = mapname or hooks.connect_premap.obj[hooks.connect_premap[i]].fn(mapname,pid,nick,idx)
+	end
+	
+	if mapname == nil then
+		print("mapname is nil - killing client")
+		return false
+	end
+	
 	local map = settings.maps[mapname]
 	local midx = map and map.midx
 	
@@ -130,17 +190,37 @@ function hook_connect(pid,nick,idx)
 	z = map.spawn.z
 	yo = map.spawn.yo
 	xo = map.spawn.xo
-	
+
 	player_add(nick)
-	minecraft.chatmsg_all(0x7F,nick.." has connected")
+	
+	for i=#(hooks.connect),1,-1 do
+		hooks.connect.obj[hooks.connect[i]].fn(pid,nick,idx)
+	end
+	
 	minecraft.setmap(idx,settings.server_name,settings.server_message,midx,x,y,z,xo,yo)
 	
 	return true
 end
 
+hooks_add("connect", "default", function (pid,nick,idx)
+	minecraft.chatmsg_all(0x7F,nick.." has connected")
+	
+	return false
+end)
+
 function hook_disconnect(pid,nick,idx)
-	minecraft.chatmsg_all(0x7F,nick.." has disconnected")
+	player_rm(nick)
+	
+	for i=#(hooks.disconnect),1,-1 do
+		hooks.disconnect.obj[hooks.disconnect[i]].fn(pid,nick,idx)
+	end
 end
+
+hooks_add("disconnect", "default", function (pid,nick,idx)
+	minecraft.chatmsg_all(0x7F,nick.." has disconnected")
+	
+	return false
+end)
 
 minecraft.sethook_puttile("hook_puttile")
 minecraft.sethook_dotick("hook_dotick")

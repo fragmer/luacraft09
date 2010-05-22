@@ -33,6 +33,22 @@ settings = {
 settings.map_lookup[settings.maps.start.midx] = "start"
 settings.map_lookup[settings.maps.main.midx] = "main"
 
+hooks_add("puttile", "map_start_preserve", function (x,y,z,player,bidx,midx)
+	if midx == settings.maps.start.midx then
+		local idx = minecraft.getidxbynick(player)
+		if bidx == tile.AIR then
+			minecraft.faketile(x-1,y,z,tile.AIR,idx)
+			minecraft.faketile(x,y+1,z,tile.AIR,idx)
+			minecraft.faketile(x,y,z+1,tile.AIR,idx)
+			minecraft.faketile(x+1,y,z,tile.AIR,idx)
+			minecraft.faketile(x,y-1,z,tile.AIR,idx)
+			minecraft.faketile(x,y,z-1,tile.AIR,idx)
+		end
+		return true
+	end
+	return false
+end)
+
 do
 	local lx,ly,lz
 	local cx,cy,cz

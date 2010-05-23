@@ -85,6 +85,7 @@ struct player
 	char *oname;
 	char *loginid;
 	int sockfd;
+	int adminium;
 	struct map *m;
 	uint16_t midx;
 	struct sockaddr_in sckad;
@@ -280,6 +281,7 @@ void ack_client(void)
 		player[player_l].z = 0;
 		player[player_l].yo = 0;
 		player[player_l].xo = 0;
+		player[player_l].adminium = 0;
 		player[player_l].loginid = NULL;
 		player[player_l].sockfd = accret;
 		player[player_l].ldbstart = 0;
@@ -683,7 +685,7 @@ int cli_setmap(int idx, struct map *m, int sx, int sy, int sz, int syo, int sxo)
 	memset(&buildbuf[bbp], ' ', 64);
 	strncpy(&buildbuf[bbp], server_msg, 64);
 	bbp += 64;
-	buildbuf[bbp++] = '\x64';
+	buildbuf[bbp++] = player[idx].adminium;
 	// 02: We have a new map.
 	buildbuf[bbp++] = '\x02';
 	
@@ -2014,6 +2016,42 @@ static int lf_setmap(lua_State *L)
 	return 0;
 }
 
+static int lf_getadminium(lua_State *L)
+{
+	int n = lua_gettop(L);
+	
+	if(n < 1)
+		return 0;
+	
+	int idx = lua_tointeger(L, 1);
+	
+	lua_pushinteger(L, player[idx].adminium);
+	
+	return 1;
+}
+
+static int lf_setadminium(lua_State *L)
+{
+	int n = lua_gettop(L);
+	
+	if(n < 3)
+		return 0;
+	
+	int idx = lua_tointeger(L, 1);
+	int adm = player[idx].adminium = lua_tointeger(L, 2);
+	
+	if(lua_toboolean(L, 3))
+	{
+		char pkt[2];
+	
+		pkt[0] = '\x0F';
+		pkt[1] = adm;
+	
+		sendall(idx, &pkt[0], 2);
+	}
+	
+	return 0;
+}
 void addluafunct(char *n, lua_CFunction f)
 {
 	lua_getglobal(Lg, "minecraft");
@@ -2052,6 +2090,8 @@ int main(int argc, char *argv[])
 	addluafunct("sethook_connect", lf_sethook_connect);
 	addluafunct("sethook_disconnect", lf_sethook_disconnect);
 	addluafunct("setmap", lf_setmap);
+	addluafunct("getadminium", lf_getadminium);
+	addluafunct("setadminium", lf_setadminium);
 	addluafunct("chatmsg", lf_chatmsg);
 	addluafunct("chatmsg_all", lf_chatmsg_all);
 	addluafunct("chatmsg_map", lf_chatmsg_map);

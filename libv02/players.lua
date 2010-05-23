@@ -1,17 +1,14 @@
 players = {obj = {}, store = {}}
 
 function player_add(nick)
-	if players.obj[nick] then
-		players.obj[nick].usable = false
-		players.obj[nick].midx = nil
-	else
+	if not players.obj[nick] then
 		players[#players+1] = nick
-		players.obj[nick] = {
-			li = #players,
-			usable = false,
-			midx = nil,
-		}
+		players.obj[nick] = {li = #players}
 	end
+	
+	players.obj[nick].midx = nil
+	players.obj[nick].usable = false
+	players.obj[nick].port_cooloff = 0
 end
 
 function player_rm(nick)
@@ -24,4 +21,5 @@ function player_rm(nick)
 		players[#players] = nil
 	end
 end
+
 

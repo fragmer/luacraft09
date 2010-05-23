@@ -240,6 +240,16 @@ minecraft.setmap(pidx,name,msg,midx,x,y,z,xo,yo)
     
     NOTE: This triggers the part hook if the player was already on a map.
 
+adminium = minecraft.getadminium(idx)
+    Gets a player's adminium rank (0 = normal, 100 = can break adminium).
+
+minecraft.setadminium(idx,adm,announce)
+    Sets a player's adminium rank (0 = normal, 100 = can break adminium).
+    If announce is true, then announce the update in a 0x0F packet.
+    
+    NOTE: The value will be announced if you do minecraft.setmap.
+          If you do that straight after calling this, set announce to false.
+
 minecraft.chatmsg(idx,pid,msg):
     Sends a message to player idx.
 

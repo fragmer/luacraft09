@@ -45,6 +45,13 @@ hooks_add("puttile", "default", function (x,y,z,player,bidx,midx)
 	
 	local ta = minecraft.gettile(midx,x,y+1,z)
 	local tb = minecraft.gettile(midx,x,y-1,z)
+	local tc = minecraft.gettile(midx,x,y,z)
+	
+	-- Beware of this.
+	if tc == tile.BEDROCK and minecraft.getadminium(player) < 100 then
+		minecraft.faketile(x,y,z,tc,player)
+		return true
+	end
 	
 	if bidx == tile.GRASS then bidx = tile.DIRT end
 	if bidx == tile.BLOCKF then bidx = tile.BLOCKH end
@@ -93,7 +100,13 @@ hooks_add("dotick", "default_playertrace", function ()
 		local p = players.obj[nick]
 		local idx = minecraft.getidxbynick(nick)
 		local midx = minecraft.gp_midx(idx)
-		if midx ~= nil then
+		
+		if players.obj[nick].port_cooloff > 0 then
+			players.obj[nick].port_cooloff = players.obj[nick].port_cooloff - 1
+		end
+		
+		if midx ~= nil and players.obj[nick].usable and players.obj[nick].port_cooloff <= 0 then
+
 			local x,y,z,yo,xo
 			x,y,z,yo,xo = minecraft.gp_pos(idx)
 			if x ~= 0 or y ~= 0 or z ~= 0 then
@@ -135,8 +148,21 @@ hooks_add("dotick", "default_playertrace", function ()
 						sy = sy + y
 						sz = sz + z
 						
-						minecraft.setmap(idx,curport.altname,curport.message,settings.maps[curport.target].midx,
-							sx,sy,sz,syo,sxo)
+						-- cater for lag worse than NZ <-> US
+						players.obj[nick].port_cooloff = 7
+						
+						if curport.target then
+							local map = settings.maps[curport.target]
+							minecraft.setadminium(idx,map.adminium,false)
+							minecraft.setmap(idx,curport.altname,curport.message,map.midx,
+								sx,sy,sz,sxo,syo)
+						else
+							minecraft.sp_pos(idx,sx,sy,sz,sxo,syo)
+						end
+						
+						if curport.fn_trigger then
+							curport.fn_trigger(idx,midx,sx,sy,sz,sxo,syo)
+						end
 					end
 				end
 			end
@@ -160,8 +186,19 @@ function hook_chat(idx,pid,msg)
 	end
 end
 
+hooks_add("chat", "default_cmdset", function (idx,pid,msg)
+	if string.sub(msg,1,4) == "/me " then
+		local nick = minecraft.gp_nick(idx)
+		minecraft.chatmsg_all(pid,"* "..nick.." "..string.sub(msg,5))
+		return true
+	end
+	
+	return false
+end)
+
 function hook_join(pid,nick,idx,midx)
 	players.obj[nick].midx = midx
+	players.obj[nick].usable = true
 
 	for i=#(hooks.join),1,-1 do
 		hooks.join.obj[hooks.join[i]].fn(pid,nick,idx,midx)
@@ -175,6 +212,7 @@ end)
 
 function hook_part(pid,nick,idx,midx)
 	players.obj[nick].midx = nil
+	players.obj[nick].usable = false
 	
 	for i=#(hooks.part),1,-1 do
 		hooks.part.obj[hooks.part[i]].fn(pid,nick,idx,midx)
@@ -220,6 +258,7 @@ function hook_connect(pid,nick,idx)
 		hooks.connect.obj[hooks.connect[i]].fn(pid,nick,idx)
 	end
 	
+	minecraft.setadminium(idx,map.adminium,false)
 	minecraft.setmap(idx,settings.server_name,settings.server_message,midx,x,y,z,xo,yo)
 	
 	return true

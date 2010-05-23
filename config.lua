@@ -41,7 +41,27 @@ settings = {
 					spawn = {x = 32*32+16, y = 33*32+20, z = 32*32+16, yo = 0, xo = 0},
 					scale = 0,
 					fn_trigger = function (idx,midx,x,y,z,xo,yo)
-						minecraft.chatmsg_map(midx,0xFF,minecraft.gp_nick(idx).." has fallen.")
+						local nick = minecraft.gp_nick(idx)
+						
+						for qz=1,2 do
+							for qx=1,2 do
+								local quad = settings.maps.spleef.custom.quads[qz][qx]
+								
+								local li = nil
+								
+								for i,lnick in ipairs(quad.players) do
+									if nick == lnick then
+										li = i
+									end
+								end
+								
+								if li then
+									quad.players[li] = quad.players[#quad.players]
+									quad.players[#quad.players] = nil
+									minecraft.chatmsg_map(midx,0xFF,quad.name..": "..nick.." has fallen.")
+								end
+							end
+						end
 					end
 				},
 			},
@@ -50,22 +70,30 @@ settings = {
 					{
 						{
 							name = "NW",
+							cx = 16, cz = 16,
 							playing = false, starting = false, stopping = false,
-							phase = 0, tickdown = 0,
+							phase = 0, tickdown = 0, delay = 0,
+							players = {},
 						},{
 							name = "NE",
+							cx = 48, cz = 16,
 							playing = false, starting = false, stopping = false,
-							phase = 0, tickdown = 0,
+							phase = 0, tickdown = 0, delay = 0,
+							players = {},
 						}
 					},{
 						{
 							name = "SW",
+							cx = 16, cz = 48,
 							playing = false, starting = false, stopping = false,
-							phase = 0, tickdown = 0,
+							phase = 0, tickdown = 0, delay = 0,
+							players = {},
 						},{
 							name = "SE",
+							cx = 48, cz = 48,
 							playing = false, starting = false, stopping = false,
-							phase = 0, tickdown = 0,
+							phase = 0, tickdown = 0, delay = 0,
+							players = {},
 						}
 					}
 				}
@@ -200,6 +228,7 @@ hooks_add("puttile", "map_spleef_spleeferate", function (x,y,z,player,bidx,midx)
 		local cl = {x,z}
 		local bad = false
 		
+		-- protect the non-spleef areas
 		for i,v in ipairs(cl) do
 			if v <= 2 or v >= 61 then bad = true end
 			if v >= 29 and v <= 35 then bad = true end
@@ -215,8 +244,8 @@ hooks_add("puttile", "map_spleef_spleeferate", function (x,y,z,player,bidx,midx)
 		if bidx ~= tile.AIR then bad = true end
 		
 		-- ok, find quadrant
-		local qx = math.floor(x/(32*32))
-		local qz = math.floor(z/(32*32))
+		local qx = math.floor(x/32)
+		local qz = math.floor(z/32)
 		local quad = map.custom.quads[qz+1][qx+1]
 		
 		-- check if playing
@@ -231,9 +260,133 @@ hooks_add("puttile", "map_spleef_spleeferate", function (x,y,z,player,bidx,midx)
 	return false
 end)
 
+hooks_add("dotick","map_spleef_play", function ()
+	local map = settings.maps.spleef
+	local midx = map.midx
+	
+	for qz=1,2 do
+		for qx=1,2 do
+			local quad = map.custom.quads[qz][qx]
+			local cx = qx*32-16
+			local cz = qz*32-16
+			
+			if quad.delay > 0 then
+				quad.delay = quad.delay - 1
+			elseif quad.starting then
+				if quad.phase == 0 or quad.phase == 2 or quad.phase == 3 then
+					local i = quad.tickdown
+					local t = tile.AIR
+					local ty = 33
+					if quad.phase == 0 then t = tile.GLASS end
+					if quad.phase == 3 then ty = 32 end
+					
+					minecraft.settile_announce(midx,cx+i,ty,cz-4,t)
+					minecraft.settile_announce(midx,cx-i-1,ty,cz+3,t)
+					minecraft.settile_announce(midx,cx-4,ty,cz-i-1,t)
+					minecraft.settile_announce(midx,cx+3,ty,cz+i,t)
+					
+					quad.tickdown = quad.tickdown - 1
+					if quad.tickdown < -3 then
+						if quad.phase == 0 then
+							local x,y,z,xo,yo
+							
+							quad.players = {}
+							
+							for i,nick in ipairs(players) do
+								local idx = minecraft.getidxbynick(nick)
+								x,y,z,xo,yo = minecraft.gp_pos(idx)
+								local rx = math.floor(x/32)-cx
+								local rz = math.floor(z/32)-cz
+								if rx >= -3 and rx <= 2 and rz >= -3 and rz <= 2 then
+									quad.players[#quad.players+1] = nick
+									minecraft.chatmsg_map(midx,0x7F,quad.name..": "..nick.." is in.")
+								end
+							end
+						end
+						
+						quad.phase = quad.phase + 1
+						
+						if quad.phase == 1 then quad.tickdown = 12 end
+						if quad.phase == 3 then quad.tickdown = 3 end
+					end
+					
+					quad.delay = 3
+				elseif quad.phase == 1 then
+					local i = quad.tickdown
+					local t = tile.AIR
+					
+					minecraft.settile_announce(midx,cx+i,32,cz,t)
+					minecraft.settile_announce(midx,cx+i,32,cz-1,t)
+					minecraft.settile_announce(midx,cx-i-1,32,cz,t)
+					minecraft.settile_announce(midx,cx-i-1,32,cz-1,t)
+					minecraft.settile_announce(midx,cx,32,cz+i,t)
+					minecraft.settile_announce(midx,cx-1,32,cz+i,t)
+					minecraft.settile_announce(midx,cx,32,cz-i-1,t)
+					minecraft.settile_announce(midx,cx-1,32,cz-i-1,t)
+					
+					quad.tickdown = quad.tickdown - 1
+					
+					if quad.tickdown < 4 then
+						quad.phase = 2
+						quad.tickdown = 3
+					end
+					
+					quad.delay = 3
+				else
+					quad.starting = false
+					quad.playing = true
+					minecraft.chatmsg_map(midx,0x7F,quad.name..": Spleef starts &4NOW&f! &cGO GO GO&f!")
+				end
+			elseif quad.playing then
+				if #quad.players == 0 then
+					quad.blkq = {}
+					quad.playing = false
+					quad.stopping = true
+					quad.phase = 0
+					quad.tickdown = 0
+					
+					-- Yay for closures with upvals. In this case, quad is an upval.
+					-- Yes, I made a Lua 5.1 VM in Java. I kinda know what I'm talking about.
+					custom_spleef_rebuild(function (midx,x,y,z,bidx)
+						if minecraft.gettile(midx,x,y,z) ~= bidx then
+							quad.blkq[#quad.blkq+1] = {midx,x,y,z,bidx}
+						end
+					end, quad.cx, quad.cz)
+					
+					minecraft.chatmsg_map(midx,0x7F,quad.name..": Spleef is &8OVER&f.")
+				end
+			elseif quad.stopping then
+				for i=1,3 do
+					if #quad.blkq == 0 then
+						quad.stopping = false
+						minecraft.chatmsg_map(midx,0x7F,quad.name..": &9Spleef reset&f.")
+					else
+						local midx,x,y,z,bidx
+						local l = quad.blkq[#quad.blkq]
+						midx = l[1]
+						x = l[2]
+						y = l[3]
+						z = l[4]
+						bidx = l[5]
+						quad.blkq[#quad.blkq] = nil
+						minecraft.settile_announce(midx,x,y,z,bidx)
+					end
+				end
+			end
+		end
+	end
+end)
+
 hooks_add("chat", "cmd_spleef", function (idx,pid,msg)
 	if msg == "/spleef" then
 		local map = settings.maps.spleef
+		local midx = map.midx
+		
+		if minecraft.gp_midx(idx) ~= midx then
+			minecraft.chatmsg(idx,0xFF,"Wrong map - type /map spleef")
+			return true
+		end
+		
 		local x,y,z,xo,yo
 		x,y,z,xo,yo = minecraft.gp_pos(idx)
 		
@@ -255,7 +408,11 @@ hooks_add("chat", "cmd_spleef", function (idx,pid,msg)
 			elseif map.custom.stopping then
 				minecraft.chatmsg(idx,0xFF,"Spleef currently stopping.")
 			else
-				minecraft.chatmsg(idx,0xFF,"TODO: start a spleef-off in "..quad.name)
+				quad.phase = 0
+				quad.tickdown = 3
+				quad.delay = 0
+				quad.starting = true
+				minecraft.chatmsg_map(midx,0x7F,minecraft.gp_nick(idx).." started &9spleef&f in "..quad.name)
 			end
 		else
 			minecraft.chatmsg(idx,0xFF,"Oi, get in a quadrant.")
